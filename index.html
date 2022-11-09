@@ -44,7 +44,7 @@
     <div>
       <div>
         <button onclick="removePoint()">-</button>
-        Points: <span id="point-count">3</span>
+        Points: <span id="point-count"></span>
         <button onclick="addPoint()">+</button>
       </div>
       <div>
@@ -81,6 +81,7 @@
       ctx.lineJoin = 'round';
 
       function redraw() {
+        pointCount.textContent = String(points.length / 2);
         ctx.clearRect(-1, -1, canvas.width + 2, canvas.height + 2);
 
         const tension = 1 - Number(tensionInput.value);
@@ -126,13 +127,11 @@
 
       function addPoint() {
         points.push(160, 160);
-        pointCount.textContent = String(points.length / 2);
         redraw();
       }
 
       function removePoint() {
         points.pop(); points.pop();
-        pointCount.textContent = String(points.length / 2);
         redraw();
       }
 
