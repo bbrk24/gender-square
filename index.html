@@ -169,10 +169,10 @@
         let str = params.get('s');
         if (str) {
           if (str.length % 2) {
-            tensionInput.value = codingStr.indexOf(str[str.length - 1]) / 63;
+            tensionInput.value = Math.round(codingStr.indexOf(str[str.length - 1]) * 100/63) / 100;
             str = str.substr(0, str.length - 1);
           }
-          points = [...str].map(el => codingStr.indexOf(el) * 320/63);
+          points = [...str].map(el => Math.round(codingStr.indexOf(el) * 320/63));
           return;
         }
         // Legacy tension + base64url points. Not generated, but still accepted.
