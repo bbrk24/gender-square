@@ -1,0 +1,3 @@
+[submodule "cardinal-spline-js"]
+	path = cardinal-spline-js
+	url = git@github.com:gdenisov/cardinal-spline-js.git
