@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="./cardinal-spline-js/curve.min.js"></script>
+    <style>
+      body {
+        overflow: hidden;
+      }
+      input, textarea {
+        font-size: 1rem;
+      }
+      #url {
+        background-color: lightGray;
+        border-radius: 5px;
+        padding: 5px;
+        width: fit-content;
+        font-family: 'Courier New', Courier, monospace;
+        border: none;
+        margin-top: 5px;
+        max-width: calc(100vw - 32px);
+      }
+      #square {
+        background-image: url('./gradient.png');
+        background-size: 100%;
+      }
+      #tension {
+        min-width: 2em;
+      }
+      .visible {
+        visibility: visible;
+        opacity: 1;
+      }
+      .hidden {
+        visibility: hidden;
+        opacity: 0;
+        transition: visibility 0s 2s, opacity 2s linear;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas width="320" height="320" id="square" onmouseup="currentPoint = -1"></canvas>
+
+    <div>
+      <div>
+        <button onclick="removePoint()">-</button>
+        Points: <span id="point-count">3</span>
+        <button onclick="addPoint()">+</button>
+      </div>
+      <div>
+        <label for="tension">Tension:</label>
+        <input type="number" min="0" max="1" id="tension" oninput="redraw()" />
+      </div>
+      <div>
+        <br />
+        <button onclick="saveURL()">Generate URL</button> <br />
+        <textarea onclick="copyURL()" readonly hidden id="url"></textarea>
+        <p id="copied-text" class="hidden">Copied!</p>
+      </div>
+    </div>
+
+    <script>
+      const pointRadius = 3;
+
+      const canvas = document.getElementById('square');
+      const pointCount = document.getElementById('point-count');
+      const tensionInput = document.getElementById('tension');
+      const pre = document.getElementById('url');
+      const copiedAlert = document.getElementById('copied-text');
+
+      const ctx = canvas.getContext("2d");
+      let points = [
+        50, 50,
+        270, 50,
+        270, 270
+      ];
+
+      var currentPoint = -1;
+
+      ctx.translate(0.5, 0.5);
+      ctx.lineJoin = 'round';
+
+      function redraw() {
+        ctx.clearRect(-1, -1, canvas.width + 2, canvas.height + 2);
+
+        const tension = 1 - Number(tensionInput.value);
+
+        ctx.beginPath();
+        ctx.moveTo(points[0], points[1]);
+        ctx.curve(points, tension, 25, true);
+        ctx.closePath();
+
+        ctx.strokeStyle = 'yellow';
+        ctx.lineWidth = pointRadius;
+        ctx.fillStyle = 'rgba(0,0,0,0.2)';
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.lineWidth = 1;
+        for (let i = 0; i < points.length; i += 2) {
+          ctx.strokeStyle = 'black';
+          ctx.strokeRect(
+            points[i] - pointRadius,
+            points[i + 1] - pointRadius,
+            pointRadius * 2,
+            pointRadius * 2
+          );
+        }
+      }
+
+      function getPointAt(x, y) {
+        for (let i = 0; i < points.length; i += 2) {
+          // give a lot of leniency for mobile users
+          if (Math.abs(points[i] - x) <= 4 * pointRadius && Math.abs(points[i + 1] - y) <= 4 * pointRadius)
+            return i; 
+        }
+        return -1;
+      }
+
+      function getPosition(event) {
+        var rect = canvas.getBoundingClientRect();
+        var x = (event.clientX ?? event.touches[0].clientX) - rect.left;
+        var y = (event.clientY ?? event.touches[0].clientY) - rect.top;
+        return { x, y };
+      }
+
+      function addPoint() {
+        points.push(160, 160);
+        pointCount.textContent = String(points.length / 2);
+        redraw();
+      }
+
+      function removePoint() {
+        points.pop(); points.pop();
+        pointCount.textContent = String(points.length / 2);
+        redraw();
+      }
+
+      canvas.ontouchstart = canvas.onmousedown = event => {
+        const pos = getPosition(event);
+        currentPoint = getPointAt(pos.x, pos.y);
+      };
+      canvas.ontouchmove = canvas.onmousemove = event => {
+        if (currentPoint !== -1) {
+          const pos = getPosition(event);
+          points[currentPoint] = pos.x;
+          points[currentPoint + 1] = pos.y;
+          redraw();
+        }
+      };
+      canvas.ontouchend = canvas.onmouseup;
+
+      function saveURL() {
+        const baseURL = location.href.split('?')[0];
+        const newURL = `${baseURL}?tension=${encodeURIComponent(tensionInput.value)}&points=${
+          encodeURIComponent(btoa(points)) 
+        }`;
+        history.pushState({}, '', newURL);
+        pre.value = newURL;
+        pre.cols = newURL.length;
+        pre.hidden = false;
+      }
+
+      function loadState() {
+        const params = new URLSearchParams(location.search);
+        const pointsStr = params.get('points');
+        if (pointsStr) points = JSON.parse(`[${atob(pointsStr)}]`);
+        tensionInput.value = params.get('tension') ?? 0.5;
+      }
+
+      function copyURL() {
+        pre.setSelectionRange?.(0, pre.value.length);
+        navigator.clipboard.writeText(pre.value);
+        copiedAlert.className = 'visible';
+        setTimeout(() => copiedAlert.className = 'hidden');
+      }
+
+      loadState();
+      redraw();
+    </script>
+  </body>
+</html>
