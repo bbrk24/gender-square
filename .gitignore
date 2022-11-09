@@ -1,0 +1,4 @@
+node_modules
+dist/*
+!dist/cardinal-spline-js
+dist/cardinal-spline-js/*.js
