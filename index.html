@@ -61,6 +61,7 @@
 
     <script>
       const pointRadius = 3;
+      const codingStr = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'
 
       const canvas = document.getElementById('square');
       const pointCount = document.getElementById('point-count');
@@ -149,11 +150,14 @@
       };
       canvas.ontouchend = canvas.onmouseup;
 
+      function compressPoints(input) {
+        return input.map(el => codingStr[Math.round(el * 63/320)]).join('');
+      }
+
       function saveURL() {
         const baseURL = location.href.split('?')[0];
-        const newURL = `${baseURL}?tension=${encodeURIComponent(tensionInput.value)}&points=${
-          encodeURIComponent(btoa(points)) 
-        }`;
+        const tension = Number(tensionInput.value);
+        const newURL = `${baseURL}?s=${compressPoints(points)}${codingStr[Math.round(tension * 63)]}`;
         history.pushState({}, '', newURL);
         pre.value = newURL;
         pre.cols = newURL.length;
@@ -162,6 +166,16 @@
 
       function loadState() {
         const params = new URLSearchParams(location.search);
+        let str = params.get('s');
+        if (str) {
+          if (str.length % 2) {
+            tensionInput.value = codingStr.indexOf(str[str.length - 1]) / 63;
+            str = str.substr(0, str.length - 1);
+          }
+          points = [...str].map(el => codingStr.indexOf(el) * 320/63);
+          return;
+        }
+        // Legacy tension + base64url points. Not generated, but still accepted.
         const pointsStr = params.get('points');
         if (pointsStr) points = JSON.parse(`[${atob(pointsStr)}]`);
         tensionInput.value = params.get('tension') ?? 0.5;
