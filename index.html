@@ -1,14 +1,27 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="utf-8" />
+    <title>Gender Square</title>
+    <link rel="icon" href="./favicon.ico" />
     <script src="./cardinal-spline-js/curve.min.js"></script>
+    <meta name="author" content="bbrk24" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <style>
       body {
         overflow: hidden;
       }
       input, textarea {
         font-size: 1rem;
+      }
+      .visible {
+        visibility: visible;
+        opacity: 1;
+      }
+      .hidden {
+        visibility: hidden;
+        opacity: 0;
+        transition: visibility 0s 2s, opacity 2s linear;
       }
       #url {
         background-color: lightGray;
@@ -27,20 +40,13 @@
       #tension {
         min-width: 2em;
       }
-      .visible {
-        visibility: visible;
-        opacity: 1;
-      }
-      .hidden {
-        visibility: hidden;
-        opacity: 0;
-        transition: visibility 0s 2s, opacity 2s linear;
+      #url-button {
+        margin-top: 1em;
       }
     </style>
   </head>
   <body>
-    <canvas width="320" height="320" id="square" onmouseup="currentPoint = -1"></canvas>
-
+    <canvas width="320" height="320" id="square"></canvas>
     <div>
       <div>
         <button onclick="removePoint()">-</button>
@@ -52,16 +58,15 @@
         <input type="number" min="0" max="1" id="tension" oninput="redraw()" />
       </div>
       <div>
+        <button id="url-button" onclick="saveURL()">Generate URL</button>
         <br />
-        <button onclick="saveURL()">Generate URL</button> <br />
         <textarea onclick="copyURL()" readonly hidden id="url"></textarea>
         <p id="copied-text" class="hidden">Copied!</p>
       </div>
     </div>
-
     <script>
       const pointRadius = 3;
-      const codingStr = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'
+      const codingStr = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
 
       const canvas = document.getElementById('square');
       const pointCount = document.getElementById('point-count');
@@ -76,7 +81,7 @@
         270, 270
       ];
 
-      var currentPoint = -1;
+      let currentPoint = -1;
 
       ctx.translate(0.5, 0.5);
       ctx.lineJoin = 'round';
@@ -113,16 +118,27 @@
       function getPointAt(x, y) {
         for (let i = 0; i < points.length; i += 2) {
           // give a lot of leniency for mobile users
-          if (Math.abs(points[i] - x) <= 4 * pointRadius && Math.abs(points[i + 1] - y) <= 4 * pointRadius)
+          if (
+            Math.abs(points[i] - x) <= 4 * pointRadius &&
+            Math.abs(points[i + 1] - y) <= 4 * pointRadius
+          )
             return i; 
         }
         return -1;
       }
 
       function getPosition(event) {
-        var rect = canvas.getBoundingClientRect();
-        var x = (event.clientX ?? event.touches[0].clientX) - rect.left;
-        var y = (event.clientY ?? event.touches[0].clientY) - rect.top;
+        const rect = canvas.getBoundingClientRect();
+        let x, y;
+
+        if (event.touches && event.touches.length > 1) {
+          x = NaN;
+          y = NaN;
+        } else {
+          x = (event.clientX ?? event.touches[0].clientX) - rect.left;
+          y = (event.clientY ?? event.touches[0].clientY) - rect.top;
+        }
+
         return { x, y };
       }
 
@@ -148,7 +164,7 @@
           redraw();
         }
       };
-      canvas.ontouchend = canvas.onmouseup;
+      window.ontouchend = window.onmouseup = () => currentPoint = -1;
 
       function compressPoints(input) {
         return input.map(el => codingStr[Math.round(el * 63/320)]).join('');
@@ -157,7 +173,8 @@
       function saveURL() {
         const baseURL = location.href.split('?')[0];
         const tension = Number(tensionInput.value);
-        const newURL = `${baseURL}?s=${compressPoints(points)}${codingStr[Math.round(tension * 63)]}`;
+        const base64Param = compressPoints(points) + codingStr[Math.round(tension * 63)];
+        const newURL = `${baseURL}?s=${base64Param}`;
         history.pushState({}, '', newURL);
         pre.value = newURL;
         pre.cols = newURL.length;
