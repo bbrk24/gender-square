@@ -115,17 +115,17 @@
         return { x, y };
       }
 
-      function addPoint() {
+      window.addPoint = () => {
         square.points.push(160, 160);
         pointCount.textContent++;
         square.redraw();
-      }
+      };
 
-      function removePoint() {
+      window.removePoint = () => {
         square.points.pop(); square.points.pop();
         pointCount.textContent = String(square.points.length / 2);
         square.redraw();
-      }
+      };
 
       square.element.ontouchstart = square.element.onmousedown = event => {
         const pos = getPosition(event);
@@ -145,14 +145,14 @@
         square.redraw();
       };
 
-      function saveURL() {
+      window.saveURL = () => {
         const baseURL = location.href.split('?')[0];
         const newURL = `${baseURL}?s=${square.saveData()}`;
         history.pushState({}, '', newURL);
         pre.value = newURL;
         pre.cols = newURL.length;
         pre.hidden = false;
-      }
+      };
 
       function loadState() {
         const params = new URLSearchParams(location.search);
@@ -161,12 +161,12 @@
         tensionInput.value = square.tension;
       }
 
-      function copyURL() {
+      window.copyURL = () => {
         pre.setSelectionRange?.(0, pre.value.length);
         navigator.clipboard.writeText(pre.value);
         copiedAlert.className = 'visible';
         setTimeout(() => copiedAlert.className = 'hidden');
-      }
+      };
 
       loadState();
       square.redraw();
