@@ -1,7 +1,8 @@
 {
   "dependencies": {
     "gh-pages": "^4.0.0",
-    "parcel": "^2.8.0"
+    "parcel": "^2.8.0",
+    "typescript": "^4.8.4"
   },
   "engines": {
     "node": ">=12"

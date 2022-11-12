@@ -4,9 +4,10 @@
     <meta charset="utf-8" />
     <title>Gender Square</title>
     <link rel="icon" href="./favicon.ico" />
-    <script src="./cardinal-spline-js/curve.min.js"></script>
     <meta name="author" content="bbrk24" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="./cardinal-spline-js/curve.min.js"></script>
+    <script src="./GenderSquare.ts"></script>
     <style>
       body {
         overflow: hidden;
@@ -46,7 +47,7 @@
     </style>
   </head>
   <body>
-    <canvas width="320" height="320" id="square"></canvas>
+    <div id="wrapper"></div>
     <div>
       <div>
         <button onclick="removePoint()">-</button>
@@ -55,7 +56,7 @@
       </div>
       <div>
         <label for="tension">Tension:</label>
-        <input type="number" min="0" max="1" id="tension" oninput="redraw()" />
+        <input type="number" min="0" max="1" id="tension" />
       </div>
       <div>
         <button id="url-button" onclick="saveURL()">Generate URL</button>
@@ -65,62 +66,34 @@
       </div>
     </div>
     <script>
-      const pointRadius = 3;
-      const codingStr = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
-
-      const canvas = document.getElementById('square');
       const pointCount = document.getElementById('point-count');
       const tensionInput = document.getElementById('tension');
       const pre = document.getElementById('url');
       const copiedAlert = document.getElementById('copied-text');
 
-      const ctx = canvas.getContext("2d");
-      let points = [
-        50, 50,
-        270, 50,
-        270, 270
-      ];
+      /**
+       * @type {{
+       *  element: HTMLCanvasElement;
+       *  points: number[];
+       *  showPoints: boolean;
+       *  tension: number;
+       *  redraw(): void;
+       * }}
+       */
+      const square = new GenderSquare({
+        superElement: '#wrapper',
+        showPoints: true,
+        size: 320
+      });
 
       let currentPoint = -1;
 
-      ctx.translate(0.5, 0.5);
-      ctx.lineJoin = 'round';
-
-      function redraw() {
-        pointCount.textContent = String(points.length / 2);
-        ctx.clearRect(-1, -1, canvas.width + 2, canvas.height + 2);
-
-        const tension = 1 - Number(tensionInput.value);
-
-        ctx.beginPath();
-        ctx.moveTo(points[0], points[1]);
-        ctx.curve(points, tension, 25, true);
-        ctx.closePath();
-
-        ctx.strokeStyle = 'yellow';
-        ctx.lineWidth = pointRadius;
-        ctx.fillStyle = 'rgba(0,0,0,0.2)';
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.lineWidth = 1;
-        for (let i = 0; i < points.length; i += 2) {
-          ctx.strokeStyle = 'black';
-          ctx.strokeRect(
-            points[i] - pointRadius,
-            points[i + 1] - pointRadius,
-            pointRadius * 2,
-            pointRadius * 2
-          );
-        }
-      }
-
       function getPointAt(x, y) {
-        for (let i = 0; i < points.length; i += 2) {
+        for (let i = 0; i < square.points.length; i += 2) {
           // give a lot of leniency for mobile users
           if (
-            Math.abs(points[i] - x) <= 4 * pointRadius &&
-            Math.abs(points[i + 1] - y) <= 4 * pointRadius
+            Math.abs(square.points[i] - x) <= 12 &&
+            Math.abs(square.points[i + 1] - y) <= 12
           )
             return i; 
         }
@@ -128,7 +101,7 @@
       }
 
       function getPosition(event) {
-        const rect = canvas.getBoundingClientRect();
+        const rect = square.element.getBoundingClientRect();
         let x, y;
 
         if (event.touches && event.touches.length > 1) {
@@ -143,38 +116,38 @@
       }
 
       function addPoint() {
-        points.push(160, 160);
-        redraw();
+        square.points.push(160, 160);
+        pointCount.textContent++;
+        square.redraw();
       }
 
       function removePoint() {
-        points.pop(); points.pop();
-        redraw();
+        square.points.pop(); square.points.pop();
+        pointCount.textContent = String(square.points.length / 2);
+        square.redraw();
       }
 
-      canvas.ontouchstart = canvas.onmousedown = event => {
+      square.element.ontouchstart = square.element.onmousedown = event => {
         const pos = getPosition(event);
         currentPoint = getPointAt(pos.x, pos.y);
       };
-      canvas.ontouchmove = canvas.onmousemove = event => {
+      square.element.ontouchmove = square.element.onmousemove = event => {
         if (currentPoint !== -1) {
           const pos = getPosition(event);
-          points[currentPoint] = pos.x;
-          points[currentPoint + 1] = pos.y;
-          redraw();
+          square.points[currentPoint] = pos.x;
+          square.points[currentPoint + 1] = pos.y;
+          square.redraw();
         }
       };
       window.ontouchend = window.onmouseup = () => currentPoint = -1;
-
-      function compressPoints(input) {
-        return input.map(el => codingStr[Math.round(el * 63/320)]).join('');
-      }
+      tensionInput.oninput = event => {
+        square.tension = +event.target.value;
+        square.redraw();
+      };
 
       function saveURL() {
         const baseURL = location.href.split('?')[0];
-        const tension = Number(tensionInput.value);
-        const base64Param = compressPoints(points) + codingStr[Math.round(tension * 63)];
-        const newURL = `${baseURL}?s=${base64Param}`;
+        const newURL = `${baseURL}?s=${square.saveData()}`;
         history.pushState({}, '', newURL);
         pre.value = newURL;
         pre.cols = newURL.length;
@@ -183,19 +156,9 @@
 
       function loadState() {
         const params = new URLSearchParams(location.search);
-        let str = params.get('s');
-        if (str) {
-          if (str.length % 2) {
-            tensionInput.value = Math.round(codingStr.indexOf(str[str.length - 1]) * 100/63) / 100;
-            str = str.substr(0, str.length - 1);
-          }
-          points = [...str].map(el => Math.round(codingStr.indexOf(el) * 320/63));
-          return;
-        }
-        // Legacy tension + base64url points. Not generated, but still accepted.
-        const pointsStr = params.get('points');
-        if (pointsStr) points = JSON.parse(`[${atob(pointsStr)}]`);
-        tensionInput.value = params.get('tension') ?? 0.5;
+        square.loadData(params.get('s') || 'KK1K11');
+        pointCount.textContent = String(square.points.length / 2);
+        tensionInput.value = square.tension;
       }
 
       function copyURL() {
@@ -206,7 +169,7 @@
       }
 
       loadState();
-      redraw();
+      square.redraw();
     </script>
   </body>
 </html>
